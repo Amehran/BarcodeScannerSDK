@@ -15,7 +15,7 @@ fun MlKitBarcode.toDomain(): BarcodeResult {
         rawValue = this.rawValue,
         format = mapMlKitFormatToDomain(this.format),
         type = mapMlKitTypeToDomain(this.valueType),
-        nothing = null
+        displayValue = this.displayValue
         // boundingBox = this.boundingBox // Uncomment if you add boundingBox to your BarcodeResult
     )
 }

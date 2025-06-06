@@ -7,5 +7,5 @@ data class BarcodeResult(
     val rawValue: String?,
     val format: BarcodeFormat,
     val type: BarcodeType,
-    val nothing: Nothing?
+    val displayValue: String?
 )

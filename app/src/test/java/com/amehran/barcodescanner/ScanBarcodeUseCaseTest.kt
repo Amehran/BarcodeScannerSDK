@@ -44,8 +44,18 @@ class ScanBarcodeUseCaseTest {
         // Arrange
         val mockBitmap = mockk<Bitmap>() // Relaxed mock for Bitmap
         val expectedBarcodeResults = listOf(
-            BarcodeResult("TestData1", BarcodeFormat.QR_CODE, BarcodeType.TEXT, null),
-            BarcodeResult("TestData2", BarcodeFormat.EAN_13, BarcodeType.PRODUCT, null)
+            BarcodeResult(
+                "TestData1",
+                BarcodeFormat.QR_CODE,
+                BarcodeType.TEXT,
+                displayValue = "Display This 1"
+            ),
+            BarcodeResult(
+                "TestData2",
+                BarcodeFormat.EAN_13,
+                BarcodeType.PRODUCT,
+                displayValue = "Display This 2"
+            )
         )
         // Stub the behavior of mockBarcodeScanner.processImage()
         every { mockBarcodeScanner.processImage(mockBitmap) } returns flowOf(expectedBarcodeResults)
