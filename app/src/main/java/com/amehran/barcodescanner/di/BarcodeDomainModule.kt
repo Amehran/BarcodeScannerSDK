@@ -1,4 +1,3 @@
-// Example: BarcodeScannerModule.kt
 package com.amehran.barcodescanner.di // Or your DI package
 
 import com.amehran.barcodescanner.domain.ScanBarcodeUseCase

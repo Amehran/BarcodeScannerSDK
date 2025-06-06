@@ -12,8 +12,6 @@ import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-
-
 // Represents the different states the UI can be in
 sealed class BarcodeScanUiState {
     object Idle : BarcodeScanUiState() // Initial state, or after a scan is cleared
@@ -29,6 +27,7 @@ class BarcodeViewModel @Inject constructor(
 
     // Private mutable state for the UI
     private val _uiState = mutableStateOf<BarcodeScanUiState>(BarcodeScanUiState.Idle)
+
     // Public immutable State for the UI to observe
     val uiState: State<BarcodeScanUiState> = _uiState
 
@@ -47,7 +46,8 @@ class BarcodeViewModel @Inject constructor(
             scanBarcodeUseCase(bitmap) // Invoke the use case
                 .catch { exception ->
                     // Handle errors from the Flow
-                    _uiState.value = BarcodeScanUiState.Error(exception.message ?: "Unknown scanning error")
+                    _uiState.value =
+                        BarcodeScanUiState.Error(exception.message ?: "Unknown scanning error")
                 }
                 .collect { barcodes ->
                     // Handle successful results from the Flow

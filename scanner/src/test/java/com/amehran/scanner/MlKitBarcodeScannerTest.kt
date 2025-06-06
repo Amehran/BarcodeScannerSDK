@@ -48,7 +48,7 @@ class MlKitBarcodeScannerTest {
         every { InputImage.fromBitmap(any(), any()) } returns mockInputImage
         // ------------------------------------------
 
-        SUT = MlKitBarcodeScanner()
+        SUT = MlKitBarcodeScanner(context.applicationContext, mlKitInstance, mapper)
     }
 
     @After
