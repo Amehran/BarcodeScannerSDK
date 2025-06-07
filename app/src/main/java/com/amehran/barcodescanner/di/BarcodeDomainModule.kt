@@ -1,14 +1,14 @@
-package com.amehran.barcodescanner.di // Or your DI package
+package com.amehran.barcodescanner.di
 
 import com.amehran.barcodescanner.domain.ScanBarcodeUseCase
-import com.amehran.barcodescanner.domain.ScanBarcodeUseCaseImpl // Your implementation
+import com.amehran.barcodescanner.domain.ScanBarcodeUseCaseImpl
 import dagger.Binds
 import dagger.Module
 import dagger.hilt.InstallIn
 import dagger.hilt.android.components.ViewModelComponent
 
 @Module
-@InstallIn(ViewModelComponent::class) // Scoped to ViewModels
+@InstallIn(ViewModelComponent::class)
 abstract class BarcodeDomainModule {
 
     @Binds

@@ -16,7 +16,7 @@ enum class BarcodeFormat {
     QR_CODE,
     UPC_A,
     UPC_E,
-    UNKNOWN; // Good to have an unknown/default type
+    UNKNOWN;
 
     companion object {
         fun fromMlKitFormat(mlKitFormat: Int): BarcodeFormat {
@@ -34,8 +34,7 @@ enum class BarcodeFormat {
                 MlKitBarcode.FORMAT_QR_CODE -> QR_CODE
                 MlKitBarcode.FORMAT_UPC_A -> UPC_A
                 MlKitBarcode.FORMAT_UPC_E -> UPC_E
-                // Add any other formats you explicitly support or care about
-                else -> UNKNOWN // Default for formats not handled or new ones
+                else -> UNKNOWN
             }
         }
     }

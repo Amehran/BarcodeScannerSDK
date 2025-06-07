@@ -1,4 +1,4 @@
-package com.amehran.barcodescanner.ui.theme.screens // Or your UI package
+package com.amehran.barcodescanner.ui.screens
 
 import android.Manifest
 import android.content.Context
@@ -27,10 +27,14 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.runtime.* // Keep this for remember, mutableStateOf, etc.
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-// NO 'import androidx.compose.runtime.getValue' needed if not using 'by' for this state
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -50,21 +54,16 @@ import java.util.concurrent.Executor
 
 
 @Composable
-fun BarcodeScannerScreen( // Assuming this is your BarcodeCaptureScreen
+fun BarcodeScannerScreen(
     viewModel: BarcodeViewModel = hiltViewModel()
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
-
-    // --- CHANGE IS HERE ---
-    // Collect the state, but don't use 'by' delegation.
-    // 'uiStateHolder' is now of type State<BarcodeScanUiState>
     val uiStateHolder: State<BarcodeScanUiState> =
         viewModel.uiState
-    // --- END OF CHANGE ---
 
 
-    var hasCameraPermission by remember { mutableStateOf(false) } // 'by' is fine for local remember states
+    var hasCameraPermission by remember { mutableStateOf(false) }
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission(),
         onResult = { granted ->
@@ -77,12 +76,14 @@ fun BarcodeScannerScreen( // Assuming this is your BarcodeCaptureScreen
     }
 
     Scaffold { paddingValues ->
-        Box(modifier = Modifier
-            .padding(paddingValues)
-            .fillMaxSize()) {
+        Box(
+            modifier = Modifier
+                .padding(paddingValues)
+                .fillMaxSize()
+        ) {
 
             if (hasCameraPermission) {
-                CameraView( // Assuming CameraView is defined as in previous examples
+                CameraView(
                     context = context,
                     lifecycleOwner = lifecycleOwner,
                     onImageCaptured = { bitmap ->
@@ -94,17 +95,15 @@ fun BarcodeScannerScreen( // Assuming this is your BarcodeCaptureScreen
                 Text("Camera permission is required.", modifier = Modifier.align(Alignment.Center))
             }
 
-            // --- UI State Handling - USING .value ---
-            // Access the actual state value using uiStateHolder.value
             when (val currentState = uiStateHolder.value) {
                 is BarcodeScanUiState.Idle -> {
-                    // Idle state UI
                 }
+
                 is BarcodeScanUiState.Scanning -> {
                     CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
                 }
+
                 is BarcodeScanUiState.Success -> {
-                    // No need to cast if 'currentState' is already smart-cast
                     Column(
                         modifier = Modifier
                             .align(Alignment.BottomCenter)
@@ -117,8 +116,8 @@ fun BarcodeScannerScreen( // Assuming this is your BarcodeCaptureScreen
                         }
                     }
                 }
+
                 is BarcodeScanUiState.Error -> {
-                    // No need to cast if 'currentState' is already smart-cast
                     Column(
                         modifier = Modifier
                             .align(Alignment.BottomCenter)
@@ -137,10 +136,6 @@ fun BarcodeScannerScreen( // Assuming this is your BarcodeCaptureScreen
 }
 
 
-// --- CameraView and imageProxyToBitmap FROM PREVIOUS EXAMPLES WOULD GO HERE ---
-// Make sure CameraView is defined as before. I'm omitting it for brevity here,
-// but it's the same CameraView that takes onImageCaptured lambda.
-
 @Composable
 fun CameraView(
     context: Context,
@@ -149,7 +144,7 @@ fun CameraView(
     modifier: Modifier = Modifier
 ) {
     val cameraProviderFuture = remember { ProcessCameraProvider.getInstance(context) }
-    var imageCapture: ImageCapture? by remember { mutableStateOf(null) } // 'by' is fine here
+    var imageCapture: ImageCapture? by remember { mutableStateOf(null) }
     val coroutineScope = rememberCoroutineScope()
 
     AndroidView(
@@ -205,14 +200,19 @@ fun CameraView(
                     captureExecutor,
                     object : ImageCapture.OnImageCapturedCallback() {
                         override fun onCaptureSuccess(image: ImageProxy) {
-                            val bitmap = imageProxyToBitmap(image) // Defined below
+                            val bitmap = imageProxyToBitmap(image)
                             image.close()
                             coroutineScope.launch(Dispatchers.Main) {
                                 onImageCaptured(bitmap)
                             }
                         }
+
                         override fun onError(exception: ImageCaptureException) {
-                            Log.e("CameraView", "Image capture failed: ${exception.message}", exception)
+                            Log.e(
+                                "CameraView",
+                                "Image capture failed: ${exception.message}",
+                                exception
+                            )
                             coroutineScope.launch(Dispatchers.Main) {
                                 onImageCaptured(null)
                             }
@@ -230,7 +230,6 @@ fun CameraView(
 private fun imageProxyToBitmap(image: ImageProxy): Bitmap? {
     if (image.format != ImageFormat.YUV_420_888) {
         Log.e("ImageUtil", "Unsupported image format: ${image.format}")
-        // Attempt to convert from JPEG if that's the format, otherwise return null or throw
         if (image.format == ImageFormat.JPEG) {
             val buffer = image.planes[0].buffer
             val bytes = ByteArray(buffer.remaining())
@@ -253,7 +252,7 @@ private fun imageProxyToBitmap(image: ImageProxy): Bitmap? {
 
     val yuvImage = YuvImage(nv21, ImageFormat.NV21, image.width, image.height, null)
     val out = ByteArrayOutputStream()
-    yuvImage.compressToJpeg(Rect(0, 0, image.width, image.height), 90, out) // Quality 90
+    yuvImage.compressToJpeg(Rect(0, 0, image.width, image.height), 90, out)
     val imageBytes = out.toByteArray()
     var bitmap = BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.size)
 

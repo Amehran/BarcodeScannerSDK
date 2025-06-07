@@ -7,11 +7,7 @@ import com.amehran.scanner.domain.model.BarcodeType
 // Import the ML Kit Barcode class (or the equivalent for your chosen library)
 import com.google.mlkit.vision.barcode.common.Barcode as MlKitBarcode // Use an alias for clarity
 
-
 class BarcodeMapper() {
-    /**
-     * Converts an ML Kit [MlKitBarcode] object to the domain [com.amehran.scanner.domain.model.BarcodeResult] object.
-     */
     fun MlKitBarcode.toDomain(): BarcodeResult {
         return BarcodeResult(
             rawValue = this.rawValue,
@@ -21,9 +17,6 @@ class BarcodeMapper() {
         )
     }
 
-    /**
-     * Maps the ML Kit barcode format constant to the domain [com.amehran.scanner.domain.model.BarcodeFormat] enum.
-     */
     private fun mapMlKitFormatToDomain(mlKitFormat: Int): BarcodeFormat {
         return when (mlKitFormat) {
             MlKitBarcode.FORMAT_QR_CODE -> BarcodeFormat.QR_CODE
@@ -42,9 +35,6 @@ class BarcodeMapper() {
         }
     }
 
-    /**
-     * Maps the ML Kit barcode value type constant to the domain [com.amehran.scanner.domain.model.BarcodeType] enum.
-     */
     private fun mapMlKitTypeToDomain(mlKitType: Int): BarcodeType {
         return when (mlKitType) {
             MlKitBarcode.TYPE_TEXT -> BarcodeType.TEXT

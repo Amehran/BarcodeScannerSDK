@@ -1,4 +1,4 @@
-package com.amehran.scanner.di // Or com.amehran.scanner.api
+package com.amehran.scanner.di
 
 import com.amehran.scanner.domain.BarcodeScanner
 import dagger.hilt.EntryPoint
@@ -6,7 +6,7 @@ import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 
 @EntryPoint
-@InstallIn(SingletonComponent::class) // Match the scope of your BarcodeScanner binding
+@InstallIn(SingletonComponent::class)
 interface SdkEntryPoint {
-    fun getBarcodeScannerService(): BarcodeScanner // This should return your SDK's interface
+    fun getBarcodeScannerService(): BarcodeScanner
 }

@@ -5,7 +5,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import com.amehran.barcodescanner.ui.theme.BarcodeScannerSDKTheme
-import com.amehran.barcodescanner.ui.theme.screens.BarcodeScannerScreen
+import com.amehran.barcodescanner.ui.screens.BarcodeScannerScreen
 import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint

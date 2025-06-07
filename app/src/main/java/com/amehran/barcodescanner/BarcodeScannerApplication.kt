@@ -6,8 +6,4 @@ import dagger.hilt.android.HiltAndroidApp
 
 @HiltAndroidApp
 class BarcodeScannerApplication : Application() {
-    override fun onCreate() {
-        super.onCreate()
-        BarcodeSDK.initialize(this)
-    }
 }

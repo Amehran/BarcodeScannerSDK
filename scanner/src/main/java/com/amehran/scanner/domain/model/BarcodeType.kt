@@ -12,10 +12,10 @@ enum class BarcodeType {
     TEXT,
     URL,
     WIFI,
-    GEO, // Geographic coordinates
+    GEO,
     CALENDAR_EVENT,
-    DRIVER_LICENSE, // Or ID card
-    UNKNOWN; // Good to have an unknown/default type
+    DRIVER_LICENSE,
+    UNKNOWN;
 
     companion object {
         fun fromMlKitType(mlKitValueType: Int): BarcodeType {
@@ -32,8 +32,7 @@ enum class BarcodeType {
                 MlKitBarcode.TYPE_GEO -> GEO
                 MlKitBarcode.TYPE_CALENDAR_EVENT -> CALENDAR_EVENT
                 MlKitBarcode.TYPE_DRIVER_LICENSE -> DRIVER_LICENSE
-                // Add any other types you explicitly support or care about
-                else -> UNKNOWN // Default for types not handled or new ones
+                else -> UNKNOWN
             }
         }
     }

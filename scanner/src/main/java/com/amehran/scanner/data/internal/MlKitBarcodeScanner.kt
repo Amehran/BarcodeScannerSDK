@@ -1,9 +1,8 @@
-package com.amehran.scanner.data.internal // Or your actual package
+package com.amehran.scanner.data.internal
 
-import android.content.Context
+import android.R.attr.bitmap
 import android.graphics.Bitmap
 import android.util.Log
-import com.amehran.scanner.data.mapper.BarcodeMapper
 import com.amehran.scanner.domain.BarcodeScanner
 import com.amehran.scanner.domain.model.BarcodeFormat
 import com.amehran.scanner.domain.model.BarcodeResult
@@ -16,23 +15,30 @@ import kotlinx.coroutines.flow.callbackFlow
 import javax.inject.Inject
 
 class MlKitBarcodeScanner @Inject constructor(
-    private val applicationContext: Context,
-    private val mlKitScanner: com.google.mlkit.vision.barcode.BarcodeScanner,
-    private val barcodeMapper: BarcodeMapper
-) : BarcodeScanner { // <-- ADD @Inject HERE
+    private val mlKitScanner: com.google.mlkit.vision.barcode.BarcodeScanner
+) : BarcodeScanner {
     override fun processImage(imageBitmap: Bitmap): Flow<List<BarcodeResult>> {
+        Log.d("MlKitBarcodeScanner", "processImage CALLED. Bitmap: ${bitmap}")
         return callbackFlow {
             val image = InputImage.fromBitmap(imageBitmap, 0)
+            Log.d(
+                "MlKitBarcodeScanner",
+                "InputImage created. Processing with ML Kit scanner..."
+            )
             mlKitScanner.process(image)
                 .addOnSuccessListener { mlKitBarcodes ->
+                    Log.d(
+                        "MlKitBarcodeScanner",
+                        "ML Kit onSuccess. Found ${mlKitBarcodes.size} ML Kit barcodes."
+                    )
                     val domainBarcodes =
-                        mlKitBarcodes.mapNotNull { it?.toDomain() } // Assuming you have a toDomain() extension
+                        mlKitBarcodes.mapNotNull { it?.toDomain() }
                     trySend(domainBarcodes).isSuccess
                     close()
                 }
                 .addOnFailureListener { exception ->
                     Log.e("BarcodeScannerSDK", "Scanning failed", exception)
-                    trySend(emptyList()) // Or handle error differently
+                    trySend(emptyList())
                     close(exception)
                 }
             awaitClose { Log.d("BarcodeScannerSDK", "Scan flow for a bitmap closed.") }

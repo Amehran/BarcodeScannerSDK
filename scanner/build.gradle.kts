@@ -53,9 +53,8 @@ dependencies {
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
-    testImplementation(libs.kotlinx.coroutines.test) // Or latest
-    testImplementation(libs.mockk) // Or latest, for mocking
+    testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(libs.mockk)
     testImplementation(libs.truth)
-    testImplementation(libs.robolectric) // Or latest
-
+    testImplementation(libs.robolectric)
 }
