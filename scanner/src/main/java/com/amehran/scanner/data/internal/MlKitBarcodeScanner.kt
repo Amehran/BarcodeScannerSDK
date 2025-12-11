@@ -49,6 +49,7 @@ class MlKitBarcodeScanner @Inject constructor(
         try {
             mlKitScanner.close()
         } catch (e: Exception) {
+            Log.e("MlKitBarcodeScanner", "Error closing ML Kit scanner", e)
         }
     }
 
