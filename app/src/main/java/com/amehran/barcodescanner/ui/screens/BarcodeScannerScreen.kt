@@ -86,8 +86,8 @@ fun BarcodeScannerScreen(
                 CameraView(
                     context = context,
                     lifecycleOwner = lifecycleOwner,
-                    onImageCaptured = { bitmap ->
-                        viewModel.processBarcodeScan(bitmap)
+                    onImageCaptured = {
+                        viewModel.processBarcodeScan(it)
                     },
                     modifier = Modifier.fillMaxSize()
                 )
@@ -113,6 +113,20 @@ fun BarcodeScannerScreen(
                         Text("Barcode Found: ${currentState.barcodes.firstOrNull()?.displayValue ?: "N/A"}")
                         Button(onClick = { viewModel.clearScanResult() }) {
                             Text("Scan Another")
+                        }
+                    }
+                }
+
+                is BarcodeScanUiState.NoBarcodesFound -> {
+                    Column(
+                        modifier = Modifier
+                            .align(Alignment.BottomCenter)
+                            .padding(16.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text("No barcodes found. Please try again.")
+                        Button(onClick = { viewModel.clearScanResult() }) {
+                            Text("Try Again")
                         }
                     }
                 }

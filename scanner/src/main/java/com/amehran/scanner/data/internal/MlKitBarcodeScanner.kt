@@ -1,8 +1,6 @@
 package com.amehran.scanner.data.internal
 
-import android.R.attr.bitmap
 import android.graphics.Bitmap
-import android.util.Log
 import com.amehran.scanner.domain.BarcodeScanner
 import com.amehran.scanner.domain.model.BarcodeFormat
 import com.amehran.scanner.domain.model.BarcodeResult
@@ -17,31 +15,21 @@ import javax.inject.Inject
 class MlKitBarcodeScanner @Inject constructor(
     private val mlKitScanner: com.google.mlkit.vision.barcode.BarcodeScanner
 ) : BarcodeScanner {
-    override fun processImage(imageBitmap: Bitmap): Flow<List<BarcodeResult>> {
-        Log.d("MlKitBarcodeScanner", "processImage CALLED. Bitmap: ${bitmap}")
+    override fun processImage(imageBitmap: Bitmap): Flow<Result<List<BarcodeResult>>> {
         return callbackFlow {
             val image = InputImage.fromBitmap(imageBitmap, 0)
-            Log.d(
-                "MlKitBarcodeScanner",
-                "InputImage created. Processing with ML Kit scanner..."
-            )
             mlKitScanner.process(image)
                 .addOnSuccessListener { mlKitBarcodes ->
-                    Log.d(
-                        "MlKitBarcodeScanner",
-                        "ML Kit onSuccess. Found ${mlKitBarcodes.size} ML Kit barcodes."
-                    )
-                    val domainBarcodes =
-                        mlKitBarcodes.mapNotNull { it?.toDomain() }
-                    trySend(domainBarcodes).isSuccess
+                    val domainBarcodes = mlKitBarcodes.mapNotNull { it?.toDomain() }
+                    trySend(Result.success(domainBarcodes))
                     close()
                 }
                 .addOnFailureListener { exception ->
-                    Log.e("BarcodeScannerSDK", "Scanning failed", exception)
-                    trySend(emptyList())
-                    close(exception)
+                    // As per AGENTS.md, propagate errors via the Result type, not logs.
+                    trySend(Result.failure(exception))
+                    close()
                 }
-            awaitClose { Log.d("BarcodeScannerSDK", "Scan flow for a bitmap closed.") }
+            awaitClose()
         }
     }
 
@@ -49,7 +37,9 @@ class MlKitBarcodeScanner @Inject constructor(
         try {
             mlKitScanner.close()
         } catch (e: Exception) {
-            Log.e("MlKitBarcodeScanner", "Error closing ML Kit scanner", e)
+            // Per AGENTS.md, avoid excessive logging. The SDK should not crash the host app
+            // if it fails to release a resource, so we swallow the exception. A more advanced
+            // implementation might use a configurable logger.
         }
     }
 
