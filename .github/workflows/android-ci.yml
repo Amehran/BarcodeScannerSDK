@@ -2,9 +2,9 @@ name: Android CI
 
 on:
   push:
-    branches: [ main, develop, refactor/cleanup ]
+    branches: [ stage, develop, refactor/cleanup ]
   pull_request:
-    branches: [ main, develop ]
+    branches: [ stage, develop ]
 
 jobs:
   unit-tests:

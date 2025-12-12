@@ -6,7 +6,7 @@ This project uses GitHub Actions for continuous integration and automated testin
 
 ### 1. Android CI (`android-ci.yml`)
 
-Runs on every push to `main`, `develop`, and `refactor/cleanup` branches, and on pull requests to `main` and `develop`.
+Runs on every push to `stage`, `develop`, and `refactor/cleanup` branches, and on pull requests to `stage` and `develop`.
 
 #### Jobs:
 
@@ -27,7 +27,7 @@ Runs on every push to `main`, `develop`, and `refactor/cleanup` branches, and on
 
 ### 2. Code Coverage (`coverage.yml`)
 
-Runs on pushes and pull requests to `main` and `develop` branches.
+Runs on pushes and pull requests to `stage` and `develop` branches.
 
 #### Features:
 
@@ -87,7 +87,7 @@ To enable Codecov integration:
 
 ### 3. Branch Protection (Recommended)
 
-Set up branch protection rules for `main`:
+Set up branch protection rules for `stage`:
 
 1. Go to Settings → Branches → Add rule
 2. Require status checks to pass before merging:
