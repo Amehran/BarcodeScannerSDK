@@ -84,7 +84,8 @@ tasks.register<JacocoReport>("jacocoTestReport") {
         "**/*_MembersInjector.*"
     )
     
-    val debugTree = fileTree("${project.buildDir}/tmp/kotlin-classes/debug") {
+    val buildDir = layout.buildDirectory.asFile.get()
+    val debugTree = fileTree("$buildDir/tmp/kotlin-classes/debug") {
         exclude(fileFilter)
     }
     
@@ -92,7 +93,7 @@ tasks.register<JacocoReport>("jacocoTestReport") {
     
     sourceDirectories.setFrom(files(mainSrc))
     classDirectories.setFrom(files(debugTree))
-    executionData.setFrom(fileTree(project.buildDir) {
+    executionData.setFrom(fileTree(buildDir) {
         include("jacoco/testDebugUnitTest.exec")
     })
 }
