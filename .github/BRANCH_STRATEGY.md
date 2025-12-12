@@ -3,9 +3,13 @@
 ## Branch Structure
 
 ```
-stage (protected)
+main (production - protected)
   ↑
-  │ PR triggers CI/CD
+  │ PR triggers CI/CD (production release)
+  │
+stage (staging - protected)
+  ↑
+  │ PR triggers CI/CD (pre-production)
   │
 develop
   ↑
@@ -18,31 +22,36 @@ refactor/cleanup (feature branch)
 
 ## CI/CD Trigger Rules
 
+
 ### Android CI Workflow (`android-ci.yml`)
 
 **Triggers on:**
 - ✅ **Push** to branches:
-  - `stage`
+  - `main` (production)
+  - `stage` (staging)
   - `develop`
   - `refactor/cleanup`
   
 - ✅ **Pull Request** to branches:
-  - `stage`
+  - `main` (production releases)
+  - `stage` (pre-production)
   - `develop`
 
 **What runs:**
 1. Unit Tests (both modules)
-2. UI Tests (Android emulators API 29, 33)
+2. UI Tests (Android emulators API 29, 33) - Currently disabled
 3. Build APK
 
 ### Code Coverage Workflow (`coverage.yml`)
 
 **Triggers on:**
 - ✅ **Push** to branches:
+  - `main`
   - `stage`
   - `develop`
   
 - ✅ **Pull Request** to branches:
+  - `main`
   - `stage`
   - `develop`
 
