@@ -15,27 +15,18 @@ import javax.inject.Inject
  * Defines the possible states for the barcode scanning UI.
  */
 sealed class BarcodeScanUiState {
-    /** The initial state, before any scanning has occurred. */
     object Idle : BarcodeScanUiState()
-
-    /** The state while the scanner is actively processing an image. */
     object Scanning : BarcodeScanUiState()
-
-    /** The state when barcodes have been successfully found. */
     data class Success(val barcodes: List<BarcodeResult>) : BarcodeScanUiState()
-
-    /** The state when no barcodes are found in the scanned image. */
     object NoBarcodesFound : BarcodeScanUiState()
-
-    /** The state when an error occurs during scanning. */
     data class Error(val message: String) : BarcodeScanUiState()
 }
 
 /**
- * The ViewModel responsible for the business logic of the barcode scanning screen.
+ * The ViewModel for the barcode scanning screen.
  *
- * It communicates with the domain layer ([ScanBarcodeUseCase]) to process images and updates the
- * UI state accordingly.
+ * It processes images from the camera, manages the UI state, and ensures that the UI is only
+ * updated with *new* barcode results to create a fluid, continuous scanning experience.
  */
 @HiltViewModel
 class BarcodeViewModel @Inject constructor(
@@ -43,16 +34,19 @@ class BarcodeViewModel @Inject constructor(
 ) : ViewModel() {
 
     private val _uiState = mutableStateOf<BarcodeScanUiState>(BarcodeScanUiState.Idle)
-
-    /** The observable state of the barcode scanning UI. */
     val uiState: State<BarcodeScanUiState> = _uiState
 
+    // Keep track of the last successful barcode to avoid redundant UI updates.
+    private var lastScannedBarcode: String? = null
+
     /**
-     * Processes the given bitmap to scan for barcodes.
+     * Processes a bitmap from the continuous camera stream to scan for barcodes.
      *
-     * It updates the [uiState] to reflect the current status of the operation:
-     * [BarcodeScanUiState.Scanning], [BarcodeScanUiState.Success],
-     * [BarcodeScanUiState.NoBarcodesFound], or [BarcodeScanUiState.Error].
+     * To ensure a smooth user experience, this function implements a smart-update mechanism. The UI
+     * state will only be updated to [BarcodeScanUiState.Success] if the detected barcode's value
+     * is different from the previously scanned one.
+     *
+     * This prevents the UI from getting stuck on a single result during continuous scanning.
      *
      * @param bitmap The image to be scanned. If null, the state will be set to [BarcodeScanUiState.Error].
      */
@@ -62,15 +56,24 @@ class BarcodeViewModel @Inject constructor(
             return
         }
 
-        _uiState.value = BarcodeScanUiState.Scanning
+        // Set to scanning only if we are not already showing a success state.
+        if (_uiState.value !is BarcodeScanUiState.Success) {
+            _uiState.value = BarcodeScanUiState.Scanning
+        }
+
         viewModelScope.launch {
-            scanBarcodeUseCase(bitmap) // This now returns a Flow<Result<...>>
+            scanBarcodeUseCase(bitmap)
                 .collect { result ->
                     result.onSuccess { barcodes ->
-                        _uiState.value = if (barcodes.isNotEmpty()) {
-                            BarcodeScanUiState.Success(barcodes)
+                        val newBarcode = barcodes.firstOrNull()
+                        if (newBarcode != null) {
+                            // Only update the UI if the barcode is new.
+                            if (newBarcode.rawValue != lastScannedBarcode) {
+                                lastScannedBarcode = newBarcode.rawValue
+                                _uiState.value = BarcodeScanUiState.Success(barcodes)
+                            }
                         } else {
-                            BarcodeScanUiState.NoBarcodesFound
+                            _uiState.value = BarcodeScanUiState.NoBarcodesFound
                         }
                     }.onFailure { exception ->
                         _uiState.value =
@@ -81,15 +84,14 @@ class BarcodeViewModel @Inject constructor(
     }
 
     /**
-     * Resets the UI state back to [BarcodeScanUiState.Idle].
+     * Resets the UI state back to [BarcodeScanUiState.Idle] and clears the last scanned barcode.
+     * This allows the user to manually trigger a re-scan of the same barcode if needed.
      */
     fun clearScanResult() {
         _uiState.value = BarcodeScanUiState.Idle
+        lastScannedBarcode = null
     }
 
-    /**
-     * Releases the underlying scanner resources when the ViewModel is cleared.
-     */
     override fun onCleared() {
         super.onCleared()
         scanBarcodeUseCase.releaseScanner()

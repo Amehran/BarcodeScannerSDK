@@ -17,7 +17,9 @@ android {
         versionCode = 1
         versionName = "1.0"
 
-        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        testInstrumentationRunner = "com.amehran.barcodescanner.HiltTestRunner"
+        // This is the correct and definitive way to enable MockK's inline mock maker for UI tests.
+        testInstrumentationRunnerArguments["mockk.mock-maker.inline"] = "true"
     }
 
     buildTypes {
@@ -38,6 +40,13 @@ android {
     }
     buildFeatures {
         compose = true
+    }
+    packaging {
+        resources {
+            excludes += "/META-INF/{AL2.0,LGPL2.1}"
+            excludes += "/META-INF/LICENSE.md"
+            excludes += "/META-INF/LICENSE-notice.md"
+        }
     }
     kapt {
         correctErrorTypes = true
@@ -80,4 +89,10 @@ dependencies {
     testImplementation(libs.turbine)
     testImplementation(libs.kotlinx.coroutines.test)
 
+    // Hilt Testing
+    androidTestImplementation(libs.hilt.android.testing)
+    kaptAndroidTest(libs.hilt.compiler)
+
+    // MockK for Android Instrumentation tests
+    androidTestImplementation(libs.mockk.android)
 }
