@@ -4,6 +4,7 @@ plugins {
     id("org.jetbrains.kotlin.plugin.compose")
     id("kotlin-kapt")
     id("com.google.dagger.hilt.android")
+    id("jacoco")
 }
 
 android {
@@ -17,7 +18,9 @@ android {
         versionCode = 1
         versionName = "1.0"
 
-        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        testInstrumentationRunner = "com.amehran.barcodescanner.HiltTestRunner"
+        // This is the correct and definitive way to enable MockK's inline mock maker for UI tests.
+        testInstrumentationRunnerArguments["mockk.mock-maker.inline"] = "true"
     }
 
     buildTypes {
@@ -38,6 +41,13 @@ android {
     }
     buildFeatures {
         compose = true
+    }
+    packaging {
+        resources {
+            excludes += "/META-INF/{AL2.0,LGPL2.1}"
+            excludes += "/META-INF/LICENSE.md"
+            excludes += "/META-INF/LICENSE-notice.md"
+        }
     }
     kapt {
         correctErrorTypes = true
@@ -80,4 +90,49 @@ dependencies {
     testImplementation(libs.turbine)
     testImplementation(libs.kotlinx.coroutines.test)
 
+    // Hilt Testing
+    androidTestImplementation(libs.hilt.android.testing)
+    kaptAndroidTest(libs.hilt.compiler)
+
+    // MockK for Android Instrumentation tests
+    androidTestImplementation(libs.mockk.android)
+}
+
+
+// JaCoCo configuration for code coverage
+tasks.register<JacocoReport>("jacocoTestReport") {
+    dependsOn("testDebugUnitTest")
+    
+    reports {
+        xml.required.set(true)
+        html.required.set(true)
+    }
+    
+    val fileFilter = listOf(
+        "**/R.class",
+        "**/R$*.class",
+        "**/BuildConfig.*",
+        "**/Manifest*.*",
+        "**/*Test*.*",
+        "android/**/*.*",
+        "**/data/model/*",
+        "**/di/*",
+        "**/*_Hilt*.*",
+        "**/Hilt_*.*",
+        "**/*_Factory.*",
+        "**/*_MembersInjector.*"
+    )
+    
+    val buildDir = layout.buildDirectory.asFile.get()
+    val debugTree = fileTree("$buildDir/tmp/kotlin-classes/debug") {
+        exclude(fileFilter)
+    }
+    
+    val mainSrc = "${project.projectDir}/src/main/java"
+    
+    sourceDirectories.setFrom(files(mainSrc))
+    classDirectories.setFrom(files(debugTree))
+    executionData.setFrom(fileTree(buildDir) {
+        include("jacoco/testDebugUnitTest.exec")
+    })
 }

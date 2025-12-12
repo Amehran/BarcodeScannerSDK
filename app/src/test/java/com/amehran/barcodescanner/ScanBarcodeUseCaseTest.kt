@@ -1,12 +1,12 @@
-package com.amehran.barcodescanner // Adjust to your app's package name
+package com.amehran.barcodescanner
 
 import android.graphics.Bitmap
 import com.amehran.barcodescanner.domain.ScanBarcodeUseCase
+import com.amehran.barcodescanner.domain.ScanBarcodeUseCaseImpl
 import com.amehran.scanner.domain.BarcodeScanner
 import com.amehran.scanner.domain.model.BarcodeFormat
 import com.amehran.scanner.domain.model.BarcodeResult
 import com.amehran.scanner.domain.model.BarcodeType
-
 import com.google.common.truth.Truth.assertThat
 import io.mockk.coVerify
 import io.mockk.every
@@ -16,7 +16,6 @@ import io.mockk.mockk
 import io.mockk.verify
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
-import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.test.runTest
 import org.junit.Before
 import org.junit.Rule
@@ -25,79 +24,81 @@ import java.io.IOException
 
 class ScanBarcodeUseCaseTest {
 
-    // Rule to automatically initialize mocks annotated with @MockK, @RelaxedMockK, etc.
     @get:Rule
     val mockkRule = MockKRule(this)
 
-    @RelaxedMockK // Creates a relaxed mock for BarcodeScanner
+    @RelaxedMockK
     private lateinit var mockBarcodeScanner: BarcodeScanner
 
     private lateinit var scanBarcodeUseCase: ScanBarcodeUseCase
 
     @Before
     fun setUp() {
-        scanBarcodeUseCase = ScanBarcodeUseCase(mockBarcodeScanner)
+        // As per Clean Architecture, we test the implementation against the interface.
+        scanBarcodeUseCase = ScanBarcodeUseCaseImpl(mockBarcodeScanner)
     }
 
     @Test
-    fun `invoke calls processImage on barcodeScanner and returns its result`() = runTest {
+    fun `invoke WHEN scanner succeeds with barcodes THEN returns success result with barcodes`() = runTest {
         // Arrange
-        val mockBitmap = mockk<Bitmap>() // Relaxed mock for Bitmap
+        val mockBitmap = mockk<Bitmap>()
         val expectedBarcodeResults = listOf(
-            BarcodeResult(
-                "TestData1",
-                BarcodeFormat.QR_CODE,
-                BarcodeType.TEXT,
-                displayValue = "Display This 1"
-            ),
-            BarcodeResult(
-                "TestData2",
-                BarcodeFormat.EAN_13,
-                BarcodeType.PRODUCT,
-                displayValue = "Display This 2"
-            )
+            BarcodeResult("TestData1", BarcodeFormat.QR_CODE, BarcodeType.TEXT, "Display This 1")
         )
-        // Stub the behavior of mockBarcodeScanner.processImage()
-        every { mockBarcodeScanner.processImage(mockBitmap) } returns flowOf(expectedBarcodeResults)
+        // Stub the scanner to return a success Result
+        every { mockBarcodeScanner.processImage(mockBitmap) } returns flowOf(Result.success(expectedBarcodeResults))
 
         // Act
-        val resultFlow = scanBarcodeUseCase(mockBitmap)
-        val actualBarcodeResults = resultFlow.first() // Collect the first emission
+        val result = scanBarcodeUseCase(mockBitmap).first() // Collect the Result
 
         // Assert
-        assertThat(actualBarcodeResults).isEqualTo(expectedBarcodeResults)
-        // Verify that processImage was called exactly once with the mockBitmap
+        assertThat(result.isSuccess).isTrue()
+        assertThat(result.getOrNull()).isEqualTo(expectedBarcodeResults)
         coVerify(exactly = 1) { mockBarcodeScanner.processImage(mockBitmap) }
     }
 
     @Test
-    fun `invoke propagates error from barcodeScanner`() = runTest {
+    fun `invoke WHEN scanner succeeds with empty list THEN returns success result with empty list`() = runTest {
+        // Arrange
+        val mockBitmap = mockk<Bitmap>()
+        // Stub the scanner to return a success Result with an empty list
+        every { mockBarcodeScanner.processImage(mockBitmap) } returns flowOf(Result.success(emptyList()))
+
+        // Act
+        val result = scanBarcodeUseCase(mockBitmap).first()
+
+        // Assert
+        assertThat(result.isSuccess).isTrue()
+        assertThat(result.getOrNull()).isEmpty()
+        coVerify(exactly = 1) { mockBarcodeScanner.processImage(mockBitmap) }
+    }
+
+    @Test
+    fun `invoke WHEN scanner fails THEN returns failure result`() = runTest {
         // Arrange
         val mockBitmap = mockk<Bitmap>()
         val expectedException = IOException("Scanner failed")
-        // Stub the behavior to return a flow that emits an error
-        every { mockBarcodeScanner.processImage(mockBitmap) } returns flow { throw expectedException }
+        // Stub the scanner to return a failure Result
+        every { mockBarcodeScanner.processImage(mockBitmap) } returns flowOf(Result.failure(expectedException))
 
-        // Act & Assert
-        try {
-            scanBarcodeUseCase(mockBitmap).first() // Attempt to collect, which should throw
-            assert(false) { "Expected an exception to be thrown" } // Fail if no exception
-        } catch (e: Exception) {
-            assertThat(e).isInstanceOf(IOException::class.java)
-            assertThat(e).isEqualTo(expectedException)
-        }
+        // Act
+        val result = scanBarcodeUseCase(mockBitmap).first()
+
+        // Assert
+        assertThat(result.isFailure).isTrue()
+        assertThat(result.exceptionOrNull()).isInstanceOf(IOException::class.java)
+        assertThat(result.exceptionOrNull()).isEqualTo(expectedException)
         coVerify(exactly = 1) { mockBarcodeScanner.processImage(mockBitmap) }
     }
 
     @Test
     fun `releaseScanner calls release on barcodeScanner`() {
-        // Arrange (No specific arrangement needed as we're just verifying a call)
+        // Arrange (No specific arrangement needed)
 
         // Act
         scanBarcodeUseCase.releaseScanner()
 
         // Assert
-        // Verify that release was called exactly once on the mockBarcodeScanner
         verify(exactly = 1) { mockBarcodeScanner.release() }
     }
 }
