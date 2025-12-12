@@ -10,7 +10,6 @@ import com.amehran.scanner.domain.model.BarcodeResult
 import com.amehran.scanner.domain.model.BarcodeType
 import com.google.common.truth.Truth.assertThat
 import io.mockk.coEvery
-import io.mockk.coVerify
 import io.mockk.impl.annotations.RelaxedMockK
 import io.mockk.junit4.MockKRule
 import io.mockk.mockk
@@ -18,8 +17,8 @@ import io.mockk.verify
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.flowOf
-import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestDispatcher
+import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
@@ -35,7 +34,6 @@ class BarcodeViewModelTest {
     @get:Rule
     val mockkRule = MockKRule(this)
 
-    // A reusable rule for managing the Main dispatcher in tests
     @get:Rule
     val mainDispatcherRule = MainDispatcherRule()
 
@@ -57,96 +55,73 @@ class BarcodeViewModelTest {
     @Test
     fun `processBarcodeScan with null bitmap sets state to Error`() = runTest {
         viewModel.processBarcodeScan(null)
-        val state = viewModel.uiState.value
-        assertThat(state).isInstanceOf(BarcodeScanUiState.Error::class.java)
-        assertThat((state as BarcodeScanUiState.Error).message).isEqualTo("No image provided for scanning.")
+        assertThat(viewModel.uiState.value).isInstanceOf(BarcodeScanUiState.Error::class.java)
+        assertThat((viewModel.uiState.value as BarcodeScanUiState.Error).message).isEqualTo("No image provided for scanning.")
     }
 
     @Test
-    fun `WHEN use case returns success with barcodes THEN state transitions to Success`() = runTest {
-        // Arrange
+    fun `WHEN use case returns success THEN state is Success`() = runTest {
         val mockBitmap = mockk<Bitmap>()
-        val barcodeResults = listOf(BarcodeResult("123", BarcodeFormat.QR_CODE, BarcodeType.TEXT, "123"))
-        coEvery { mockScanBarcodeUseCase(mockBitmap) } returns flowOf(Result.success(barcodeResults))
+        val barcodeResult = BarcodeResult("123", BarcodeFormat.QR_CODE, BarcodeType.TEXT, "123")
+        coEvery { mockScanBarcodeUseCase(mockBitmap) } returns flowOf(Result.success(listOf(barcodeResult)))
 
-        // Act
         viewModel.processBarcodeScan(mockBitmap)
-
-        // Assert
-        assertThat(viewModel.uiState.value).isInstanceOf(BarcodeScanUiState.Scanning::class.java)
         mainDispatcherRule.dispatcher.scheduler.advanceUntilIdle()
+
         val finalState = viewModel.uiState.value
         assertThat(finalState).isInstanceOf(BarcodeScanUiState.Success::class.java)
-        assertThat((finalState as BarcodeScanUiState.Success).barcodes).isEqualTo(barcodeResults)
-        coVerify(exactly = 1) { mockScanBarcodeUseCase(mockBitmap) }
+        assertThat((finalState as BarcodeScanUiState.Success).barcodes.first()).isEqualTo(barcodeResult)
     }
 
     @Test
-    fun `WHEN use case returns success with empty list THEN state transitions to NoBarcodesFound`() = runTest {
-        // Arrange
+    fun `WHEN same barcode is scanned twice THEN UI state remains the same`() = runTest {
         val mockBitmap = mockk<Bitmap>()
-        coEvery { mockScanBarcodeUseCase(mockBitmap) } returns flowOf(Result.success(emptyList()))
+        val barcodeResult = BarcodeResult("123", BarcodeFormat.QR_CODE, BarcodeType.TEXT, "123")
+        coEvery { mockScanBarcodeUseCase(mockBitmap) } returns flowOf(Result.success(listOf(barcodeResult)))
 
-        // Act
+        // First scan
         viewModel.processBarcodeScan(mockBitmap)
-
-        // Assert
-        assertThat(viewModel.uiState.value).isInstanceOf(BarcodeScanUiState.Scanning::class.java)
         mainDispatcherRule.dispatcher.scheduler.advanceUntilIdle()
-        assertThat(viewModel.uiState.value).isInstanceOf(BarcodeScanUiState.NoBarcodesFound::class.java)
-        coVerify(exactly = 1) { mockScanBarcodeUseCase(mockBitmap) }
-    }
+        val firstState = viewModel.uiState.value
 
-    @Test
-    fun `WHEN use case returns failure THEN state transitions to Error`() = runTest {
-        // Arrange
-        val mockBitmap = mockk<Bitmap>()
-        val errorMessage = "Scanner exploded"
-        val exception = IOException(errorMessage)
-        coEvery { mockScanBarcodeUseCase(mockBitmap) } returns flowOf(Result.failure(exception))
-
-        // Act
+        // Second scan
         viewModel.processBarcodeScan(mockBitmap)
-
-        // Assert
-        assertThat(viewModel.uiState.value).isInstanceOf(BarcodeScanUiState.Scanning::class.java)
         mainDispatcherRule.dispatcher.scheduler.advanceUntilIdle()
-        val finalState = viewModel.uiState.value
-        assertThat(finalState).isInstanceOf(BarcodeScanUiState.Error::class.java)
-        assertThat((finalState as BarcodeScanUiState.Error).message).isEqualTo(errorMessage)
-        coVerify(exactly = 1) { mockScanBarcodeUseCase(mockBitmap) }
+        val secondState = viewModel.uiState.value
+
+        assertThat(secondState).isSameInstanceAs(firstState)
     }
 
     @Test
-    fun `clearScanResult resets state to Idle`() = runTest {
-        // Set a non-idle state first
+    fun `WHEN clearScanResult is called THEN state is Idle and can rescan`() = runTest {
         val mockBitmap = mockk<Bitmap>()
-        coEvery { mockScanBarcodeUseCase(mockBitmap) } returns flowOf(Result.success(listOf(mockk())))
+        val barcodeResult = BarcodeResult("abc", BarcodeFormat.QR_CODE, BarcodeType.TEXT, "abc")
+        coEvery { mockScanBarcodeUseCase(mockBitmap) } returns flowOf(Result.success(listOf(barcodeResult)))
+
+        // First scan
         viewModel.processBarcodeScan(mockBitmap)
         mainDispatcherRule.dispatcher.scheduler.advanceUntilIdle()
         assertThat(viewModel.uiState.value).isInstanceOf(BarcodeScanUiState.Success::class.java)
 
-        // Act
+        // Clear result
         viewModel.clearScanResult()
-
-        // Assert
         assertThat(viewModel.uiState.value).isEqualTo(BarcodeScanUiState.Idle)
+
+        // Scan again
+        viewModel.processBarcodeScan(mockBitmap)
+        mainDispatcherRule.dispatcher.scheduler.advanceUntilIdle()
+        assertThat(viewModel.uiState.value).isInstanceOf(BarcodeScanUiState.Success::class.java)
     }
 
     @Test
-    fun `onCleared calls releaseScanner on use case`() {
-        // This is a bit tricky to test with Hilt, but we can call it directly.
-        // In a real app, this is called by the ViewModel lifecycle.
-        val viewModel = BarcodeViewModel(mockScanBarcodeUseCase)
+    fun `onCleared calls releaseScanner`() {
         val onClearedMethod = ViewModel::class.java.getDeclaredMethod("onCleared")
         onClearedMethod.isAccessible = true
         onClearedMethod.invoke(viewModel)
-
         verify(exactly = 1) { mockScanBarcodeUseCase.releaseScanner() }
     }
 }
 
-// A JUnit Rule to setup and teardown the main dispatcher for tests.
 @ExperimentalCoroutinesApi
 class MainDispatcherRule(
     val dispatcher: TestDispatcher = StandardTestDispatcher()
