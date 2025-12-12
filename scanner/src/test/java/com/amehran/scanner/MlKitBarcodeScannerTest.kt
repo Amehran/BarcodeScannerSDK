@@ -5,64 +5,119 @@ import com.amehran.scanner.data.internal.MlKitBarcodeScanner
 import com.google.android.gms.tasks.OnFailureListener
 import com.google.android.gms.tasks.OnSuccessListener
 import com.google.android.gms.tasks.Task
-import com.google.common.truth.Truth
-import com.google.mlkit.vision.barcode.BarcodeScanner as MlKitSdkScanner
-import com.google.mlkit.vision.barcode.BarcodeScanning // Keep this import
+import com.google.common.truth.Truth.assertThat
 import com.google.mlkit.vision.barcode.common.Barcode as MlKitBarcode
 import com.google.mlkit.vision.common.InputImage
-import io.mockk.*
+import io.mockk.clearAllMocks
+import io.mockk.every
+import io.mockk.impl.annotations.RelaxedMockK
+import io.mockk.junit4.MockKRule
+import io.mockk.mockk
+import io.mockk.mockkStatic
+import io.mockk.unmockkStatic
+import io.mockk.verify
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Before
+import org.junit.Rule
 import org.junit.Test
-import org.junit.runner.RunWith
 import java.io.IOException
 
-import org.robolectric.RobolectricTestRunner
-import org.robolectric.annotation.Config
-
-@RunWith(RobolectricTestRunner::class)
-@Config(manifest=Config.NONE, sdk = [28])
 class MlKitBarcodeScannerTest {
 
-    private lateinit var mlKitSdkScannerMock: MlKitSdkScanner
-    private lateinit var SUT: com.amehran.scanner.domain.BarcodeScanner
+    @get:Rule
+    val mockkRule = MockKRule(this)
 
-    // ... (mlKitSdkScannerMock, SUT)
+    @RelaxedMockK
+    private lateinit var mlKitSdkScanner: com.google.mlkit.vision.barcode.BarcodeScanner
 
-    // Add InputImage to the list of classes whose static methods you'll mock
+    private lateinit var sut: MlKitBarcodeScanner
+
     @Before
     fun setUp() {
-        mlKitSdkScannerMock = mockk(relaxed = true)
+        // Mock the static call to InputImage.fromBitmap, which is a dependency of our SUT.
+        mockkStatic(InputImage::class)
+        every { InputImage.fromBitmap(any(), any()) } returns mockk()
 
-        mockkStatic(BarcodeScanning::class)
-        every { BarcodeScanning.getClient(any()) } returns mlKitSdkScannerMock
-        every { BarcodeScanning.getClient() } returns mlKitSdkScannerMock
-
-        // ---- ADD THIS SECTION FOR InputImage ----
-        mockkStatic(InputImage::class) // Enable static mocking for InputImage
-        val mockInputImage = mockk<InputImage>(relaxed = true) // Create a relaxed mock for InputImage instances
-        // Mock the specific static method fromBitmap
-        // "any()" for bitmap and rotationDegrees as we don't care about their specific values in this mock
-        every { InputImage.fromBitmap(any(), any()) } returns mockInputImage
-        // ------------------------------------------
-
-        SUT = MlKitBarcodeScanner(context.applicationContext, mlKitInstance, mapper)
+        sut = MlKitBarcodeScanner(mlKitSdkScanner)
     }
 
     @After
     fun tearDown() {
-        unmockkStatic(BarcodeScanning::class)
-        unmockkStatic(InputImage::class) // ---- UNMOCK InputImage ----
+        unmockkStatic(InputImage::class)
         clearAllMocks()
     }
-    // ... (rest of your test methods: mockTaskForProcess, processImage tests, etc.)
-    // Your mockTaskForProcess and the actual test methods using it should remain the same.
-    // The key was just removing the MockedStatic variable and ensuring mockkStatic/unmockkStatic are used correctly.
-    private fun mockTaskForProcess(barcodesToReturn: List<MlKitBarcode>? = null, exceptionToThrow: Exception? = null): Task<List<MlKitBarcode>> {
-        val taskMock = mockk<Task<List<MlKitBarcode>>>(relaxed = true)
 
+    @Test
+    fun `WHEN process succeeds with barcodes THEN returns success result`() = runTest {
+        // Arrange
+        val mockBitmap = mockk<Bitmap>()
+        val mlKitBarcode = mockk<MlKitBarcode>(relaxed = true) {
+            every { rawValue } returns "RawValue"
+        }
+        val successTask = mockTaskForProcess(barcodesToReturn = listOf(mlKitBarcode))
+        every { mlKitSdkScanner.process(any<InputImage>()) } returns successTask
+
+        // Act
+        val result = sut.processImage(mockBitmap).first()
+
+        // Assert
+        assertThat(result.isSuccess).isTrue()
+        assertThat(result.getOrNull()).hasSize(1)
+        assertThat(result.getOrNull()?.first()?.rawValue).isEqualTo("RawValue")
+        verify(exactly = 1) { mlKitSdkScanner.process(any<InputImage>()) }
+    }
+
+    @Test
+    fun `WHEN process succeeds with no barcodes THEN returns success with empty list`() = runTest {
+        // Arrange
+        val mockBitmap = mockk<Bitmap>()
+        val successTask = mockTaskForProcess(barcodesToReturn = emptyList())
+        every { mlKitSdkScanner.process(any<InputImage>()) } returns successTask
+
+        // Act
+        val result = sut.processImage(mockBitmap).first()
+
+        // Assert
+        assertThat(result.isSuccess).isTrue()
+        assertThat(result.getOrNull()).isEmpty()
+    }
+
+    @Test
+    fun `WHEN process fails THEN returns failure result`() = runTest {
+        // Arrange
+        val mockBitmap = mockk<Bitmap>()
+        val expectedException = IOException("ML Kit failed")
+        val failureTask = mockTaskForProcess(exceptionToThrow = expectedException)
+        every { mlKitSdkScanner.process(any<InputImage>()) } returns failureTask
+
+        // Act
+        val result = sut.processImage(mockBitmap).first()
+
+        // Assert
+        assertThat(result.isFailure).isTrue()
+        assertThat(result.exceptionOrNull()).isInstanceOf(IOException::class.java)
+        assertThat(result.exceptionOrNull()).isEqualTo(expectedException)
+    }
+
+    @Test
+    fun `release() calls close on the underlying scanner`() {
+        // Act
+        sut.release()
+
+        // Assert
+        verify(exactly = 1) { mlKitSdkScanner.close() }
+    }
+
+    /**
+     * Helper function to mock the Task<T> API used by ML Kit.
+     */
+    private fun mockTaskForProcess(
+        barcodesToReturn: List<MlKitBarcode>? = null,
+        exceptionToThrow: Exception? = null
+    ): Task<List<MlKitBarcode>> {
+        val taskMock = mockk<Task<List<MlKitBarcode>>>()
         every { taskMock.addOnSuccessListener(any()) } answers {
             if (barcodesToReturn != null) {
                 (firstArg() as OnSuccessListener<List<MlKitBarcode>>).onSuccess(barcodesToReturn)
@@ -76,64 +131,6 @@ class MlKitBarcodeScannerTest {
             }
             taskMock
         }
-        every { taskMock.isSuccessful } returns (barcodesToReturn != null && exceptionToThrow == null)
         return taskMock
-    }
-
-
-    @Test
-    fun `processImage successfully detects and maps barcodes`() = runTest {
-        val mockBitmap = mockk<Bitmap>(relaxed = true)
-        val rawValue1 = "QRData1"
-        val mlKitBarcode1 = mockk<MlKitBarcode>(relaxed = true) {
-            every { rawValue } returns rawValue1
-            every { format } returns MlKitBarcode.FORMAT_QR_CODE
-            every { valueType } returns MlKitBarcode.TYPE_TEXT
-        }
-        val mlKitBarcodes = listOf(mlKitBarcode1)
-        val successTask = mockTaskForProcess(barcodesToReturn = mlKitBarcodes)
-        every { mlKitSdkScannerMock.process(any<InputImage>()) } returns successTask
-
-        val actualResults = SUT.processImage(mockBitmap).first()
-
-        Truth.assertThat(actualResults).hasSize(1)
-        Truth.assertThat(actualResults[0].rawValue).isEqualTo(rawValue1)
-        verify { mlKitSdkScannerMock.process(any<InputImage>()) }
-    }
-
-    @Test
-    fun `processImage returns empty list when no barcodes detected`() = runTest {
-        val mockBitmap = mockk<Bitmap>(relaxed = true)
-        val emptyMlKitBarcodes = emptyList<MlKitBarcode>()
-        val successTask = mockTaskForProcess(barcodesToReturn = emptyMlKitBarcodes)
-        every { mlKitSdkScannerMock.process(any<InputImage>()) } returns successTask
-
-        val actualResults = SUT.processImage(mockBitmap).first()
-        Truth.assertThat(actualResults).isEmpty()
-    }
-
-    @Test
-    fun `processImage propagates failure from ML Kit`() = runTest {
-        val mockBitmap = mockk<Bitmap>(relaxed = true)
-        val expectedException = IOException("ML Kit processing failed")
-        val failureTask = mockTaskForProcess(exceptionToThrow = expectedException)
-        every { mlKitSdkScannerMock.process(any<InputImage>()) } returns failureTask
-
-        try {
-            SUT.processImage(mockBitmap).first()
-            assert(false) { "Flow should have thrown an exception" }
-        } catch (e: Exception) {
-            Truth.assertThat(e).isInstanceOf(IOException::class.java)
-            Truth.assertThat(e).hasMessageThat().isEqualTo(expectedException.message)
-        }
-    }
-
-    @Test
-    fun `release does not throw an exception (basic check)`() {
-        try {
-            SUT.release()
-        } catch (e: Exception) {
-            assert(false) { "SUT.release() should not throw an exception: $e" }
-        }
     }
 }
