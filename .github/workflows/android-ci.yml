@@ -39,14 +39,7 @@ jobs:
           app/build/test-results/
           scanner/build/test-results/
         retention-days: 30
-        
-    - name: Publish unit test results
-      uses: EnricoMi/publish-unit-test-result-action@v2
-      if: always()
-      with:
-        files: |
-          app/build/test-results/**/*.xml
-          scanner/build/test-results/**/*.xml
+
 
   instrumentation-tests:
     name: UI Tests
