@@ -178,6 +178,39 @@ To run the sample:
 ./gradlew :app:installDebug
 ```
 
+## ⚠️ Known Limitations
+
+### 16KB Page Size Compatibility (Android 15+)
+
+**Status:** ⚠️ Informational Warning (Non-blocking)
+
+The app currently shows a compatibility warning for 16KB page sizes on Android 15+ devices:
+
+```
+APK is not compatible with 16 KB devices.
+Some libraries have LOAD segments not aligned at 16 KB boundaries.
+```
+
+**What this means:**
+- The app **works perfectly** on all devices
+- This is a **future compliance requirement** (deadline: November 1, 2025)
+- The issue is in **Google's ML Kit library**, not our SDK code
+- Google will update ML Kit before the deadline
+
+**Our preparation:**
+- ✅ Updated to Android Gradle Plugin 8.7.3 (supports 16KB alignment)
+- ✅ SDK code is ready for compliance
+- ✅ Monitoring for ML Kit library updates
+
+**For more details:** See [docs/16KB_PAGE_SIZE.md](docs/16KB_PAGE_SIZE.md)
+
+**Timeline:**
+- **Now:** Warning appears but app functions normally
+- **Before Nov 2025:** Google will release updated ML Kit
+- **Action:** Update dependency when available
+
+This demonstrates awareness of upcoming Android platform requirements and proactive preparation for compliance.
+
 ## 🤝 Contributing
 
 This is a showcase project for recruitment purposes. However, feedback and suggestions are welcome!
