@@ -98,20 +98,22 @@ class BarcodeSdkTest {
     @Test
     fun `initialize throws exception when EntryPoint fails`() {
         // Arrange
-        val expectedException = IllegalStateException("Hilt not initialized")
+        val originalException = IllegalStateException("Hilt not initialized")
         every { 
             EntryPointAccessors.fromApplication<SdkEntryPoint>(
                 any(), 
                 any()
             ) 
-        } throws expectedException
+        } throws originalException
 
         // Act & Assert
         try {
             BarcodeSDK.initialize(mockContext)
             throw AssertionError("Expected exception to be thrown")
         } catch (e: IllegalStateException) {
-            assertThat(e).isEqualTo(expectedException)
+            // SDK wraps the exception with additional context
+            assertThat(e.message).contains("BarcodeSDK initialization failed")
+            assertThat(e.cause).isEqualTo(originalException)
         }
     }
 
